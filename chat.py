@@ -1,42 +1,20 @@
-import os 
-from dotenv import load_dotenv
-import torch 
-from transformers import pipeline, AutoTokenizer, AutoModelForCausalLM 
+from string import Template
+from vllm import LLM, SamplingParams
 
-load_dotenv(".env")
-device = "cuda"
-token = os.environ["HUB_TOKEN"] 
+sampling_params = SamplingParams(temperature=0.25, top_p=0.95, max_tokens=256)
 
-system_prompt = """Dies ist eine Unterhaltung zwischen einem intelligenten, hilfsbereitem KI-Assistenten und einem Nutzer.
-Der Assistent gibt ausführliche, hilfreiche und ehrliche Antworten."""
+model = "TheBloke/Llama-2-13B-German-Assistant-v4-AWQ"
+llm = LLM(model=model, quantization="awq")
 
-prompt_format = "<|im_start|>system\n{system_prompt}<|im_end|>\n<|im_start|>user\n{prompt}<|im_end|>\n<|im_start|>assistant\n"
-prompt = "Wie findest du Atomenergie?"
+template = Template("""$personality\nUser: $prompt\nAsssistant:""")
+personality = "Du bist ein hilfreicher Assistent mit dem Namen Mojo. Du bist hilfreich und humorvoll."
+question = "User: Wer bist du und wie geht es dir? Assistant:"
 
-
-generator = pipeline(
-    model="LeoLM/leo-mistral-hessianai-7b-chat", 
-    device=device, 
-    torch_dtype=torch.float16, 
-    token=token,
+outputs = llm.generate(
+    prompts=template.substitute(personality=personality, prompt=question),
+    sampling_params=sampling_params,
 )
 
+print(template.substitute(personality=personality, prompt=question))
+print(outputs[0].outputs[0].text)
 
-def main(): 
-    out = generator(
-        prompt_format.format(system_prompt=system_prompt, prompt=prompt), 
-        do_sample=True, 
-        top_p=0.95, 
-        max_length=8192,
-    )
-    print(f"User: {prompt}")
-    out = out[0]['generated_text']
-    search = "<|im_start|>assistant\n"
-    out = out[out.index(search) + len(search):]
-    print(f"Assistant: {out}")
-
-
-
-
-if __name__ == "__main__": 
-    main()
