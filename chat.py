@@ -1,5 +1,6 @@
 import sys
 import wave
+import requests
 from string import Template
 
 import pyaudio
@@ -7,7 +8,7 @@ import whisper
 from transformers import AutoTokenizer, pipeline
 from TTS.api import TTS
 
-# from vllm import LLM, SamplingParams
+llm_url = "localhost:8081/v1/completions"
 
 # pyaudio config
 FORMAT = pyaudio.paInt16 
@@ -15,27 +16,13 @@ CHANNELS = 1 if sys.platform == 'darwin' else 2
 CHUNK = 1024 
 RECORD_SECONDS = 5 
 
-# LLM params
-# sampling_params = SamplingParams(temperature=0.25, top_p=0.95, max_tokens=256)
 template = Template("""$personality\nUser: $prompt\nAsssistant:""")
 personality = "Du bist ein hilfreicher Assistent mit dem Namen Mojo. Du bist hilfreich und humorvoll."
 device = "cpu"
 model = "flozi00/Mistral-7B-german-assistant-v4"
 tokenizer = AutoTokenizer.from_pretrained(model)
-# Init models
-# vllm just works on gpu
-# llm = LLM(model=model, quantization="awq")
-pipe = pipeline(
-    "text-generation",
-    model=model, 
-    tokenizer=tokenizer,
-    max_new_tokens=512,
-    do_sample=True,
-    temperature=0.7,
-    top_p=0.95,
-    top_k=40,
-    repetition_penalty=1.1,
-)
+
+# init models
 speech_to_text = whisper.load_model("base")
 text_to_speech = TTS("tts_models/de/thorsten/tacotron2-DDC").to(device)
 
@@ -61,13 +48,18 @@ with wave.open("output.wav", "wb") as wf:
 result = speech_to_text.transcribe("output.wav")
 transcription = result["text"]
 
-# outputs = llm.generate(
-#     prompts=template.substitute(personality=personality, prompt=transcription),
-#     sampling_params=sampling_params,
-# )
-llm_output = pipe(
-    template.substitute(personality=personality, prompt=transcription)
-)[0]['generated_text']
+# call llm api
+response = requests.post(
+    url=llm_url, 
+    data={
+        "model": "flozi00/Mistral-7B-german-assistant-v4", 
+        "prompt": str(transcription), 
+        "temperature": 0.0, 
+        "max_tokens": 512
+    },
+)
+
+llm_output = response 
 
 text_to_speech.tts_with_vc_to_file(
     llm_output, 

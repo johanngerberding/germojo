@@ -16,6 +16,11 @@ I want to build my own alexa kinda thing called Mojo, a chatbot that you can tal
 
 Mojo should be a funny and smart assistant that you can ask stuff that you are interested in.
 
+## Deploy LLM 
+
+Make sure you have docker correctly installed (including the nvidia-toolkit). 
+Create a `.env` file cotaining your `HUB_TOKEN` and the huggingface `MODEL_NAME`, I include a simple `.env_template`.
+
 ## References 
 
 * [vllm](https://docs.vllm.ai/en/latest/index.html)
