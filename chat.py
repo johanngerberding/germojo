@@ -9,18 +9,15 @@ from transformers import AutoTokenizer, pipeline
 from TTS.api import TTS
 
 llm_url = "localhost:8081/v1/completions"
+max_new_tokens = 256
+temperature = 0.0
+model_name = "flozi00/Mistral-7B-german-assistant-v4"
 
 # pyaudio config
 FORMAT = pyaudio.paInt16 
 CHANNELS = 1 if sys.platform == 'darwin' else 2 
 CHUNK = 1024 
 RECORD_SECONDS = 5 
-
-template = Template("""$personality\nUser: $prompt\nAsssistant:""")
-personality = "Du bist ein hilfreicher Assistent mit dem Namen Mojo. Du bist hilfreich und humorvoll."
-device = "cpu"
-model = "flozi00/Mistral-7B-german-assistant-v4"
-tokenizer = AutoTokenizer.from_pretrained(model)
 
 # init models
 speech_to_text = whisper.load_model("base")
@@ -48,14 +45,18 @@ with wave.open("output.wav", "wb") as wf:
 result = speech_to_text.transcribe("output.wav")
 transcription = result["text"]
 
+prompt_template=f'''### User: {transcription}
+### Assistant:
+
+'''
 # call llm api
 response = requests.post(
     url=llm_url, 
     data={
         "model": "flozi00/Mistral-7B-german-assistant-v4", 
-        "prompt": str(transcription), 
-        "temperature": 0.0, 
-        "max_tokens": 512
+        "prompt": prompt_template, 
+        "temperature": temperature, 
+        "max_tokens": max_new_tokens
     },
 )
 
